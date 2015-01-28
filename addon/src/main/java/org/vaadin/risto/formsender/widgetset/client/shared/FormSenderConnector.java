@@ -1,7 +1,6 @@
 package org.vaadin.risto.formsender.widgetset.client.shared;
 
 import java.util.Map;
-import java.util.Map.Entry;
 
 import org.vaadin.risto.formsender.FormSender;
 
@@ -17,67 +16,60 @@ import com.vaadin.shared.ui.Connect;
 @Connect(FormSender.class)
 public class FormSenderConnector extends AbstractExtensionConnector {
 
-    private static final long serialVersionUID = 5721950329134512038L;
-    private Element targetElement;
-    private final FormControl formControlRpc = new FormControl() {
+  private static final long serialVersionUID = 5721950329134512038L;
+  private Element targetElement;
 
-        private static final long serialVersionUID = -6376909637382144413L;
-
-        @Override
-        public void send(Method method, Map<String, String> values,
-                String target, String action) {
-            createAndSendForm(method.toString(), values, target, action);
-        }
-    };
+  private final FormControl formControlRpc = new FormControl() {
+    private static final long serialVersionUID = -6376909637382144413L;
 
     @Override
-    protected void init() {
-        super.init();
-
-        registerRpc(FormControl.class, formControlRpc);
+    public void send(Method method, Map<String, String[]> values,
+                     String target, String action, String formAcceptCharSet) {
+      createAndSendForm(method.toString(), values, target, action, formAcceptCharSet);
     }
+  };
 
-    @Override
-    public void onUnregister() {
-        unregisterRpc(FormControl.class, formControlRpc);
-        super.onUnregister();
+  @Override
+  protected void init() {
+    super.init();
+    registerRpc(FormControl.class, formControlRpc);
+  }
+
+  @Override
+  public void onUnregister() {
+    unregisterRpc(FormControl.class, formControlRpc);
+    super.onUnregister();
+  }
+
+  @Override
+  protected void extend(ServerConnector target) {
+    targetElement = (( ComponentConnector ) target).getWidget().getElement();
+  }
+
+  protected void createAndSendForm(String method, Map<String, String[]> values, String target, String action, String acceptCharSet) {
+    FormElement formElement = createFormElement(method, values, target, action, acceptCharSet);
+    formElement.setClassName("formsender");
+    targetElement.appendChild(formElement);
+    formElement.submit();
+  }
+
+  // create the form element to be submitted
+  protected FormElement createFormElement(String method, Map<String, String[]> values, String target, String action, String acceptCharSet) {
+    FormElement fe = Document.get().createFormElement();
+    fe.setMethod(method);
+    fe.setTarget(target);
+    fe.setAction(action);
+    if( acceptCharSet != null ) {
+      fe.setAcceptCharset(acceptCharSet);
     }
-
-    @Override
-    protected void extend(ServerConnector target) {
-        targetElement = ((ComponentConnector) target).getWidget().getElement();
-
+    for( Map.Entry<String, String[]> nameValue : values.entrySet() ) {
+      for( String value : nameValue.getValue() ) {
+        InputElement inputElement = Document.get().createHiddenInputElement();
+        inputElement.setName(nameValue.getKey());
+        inputElement.setValue(value);
+        fe.appendChild(inputElement);
+      }
     }
-
-    protected void createAndSendForm(String method, Map<String, String> values,
-            String target, String action) {
-
-        FormElement formElement = createFormElement(method, values, target,
-                action);
-        formElement.setClassName("formsender");
-
-        targetElement.appendChild(formElement);
-
-        formElement.submit();
-    }
-
-    // create the form element to be submitted
-    protected FormElement createFormElement(String method,
-            Map<String, String> values, String target, String action) {
-        FormElement fe = Document.get().createFormElement();
-
-        fe.setMethod(method);
-        fe.setTarget(target);
-        fe.setAction(action);
-
-        for (Entry<String, String> nameValue : values.entrySet()) {
-            InputElement inputElement = Document.get()
-                    .createHiddenInputElement();
-            inputElement.setName(nameValue.getKey());
-            inputElement.setValue(nameValue.getValue());
-            fe.appendChild(inputElement);
-        }
-
-        return fe;
-    }
+    return fe;
+  }
 }
